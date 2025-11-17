@@ -11,7 +11,7 @@ import json
 from path_utils import path_from_local_root
 
 
-NAME = # TODO: Please give your agent a NAME
+NAME = 'keyreg' # TODO: Please give your agent a NAME
 
 class MyAgent(MyLSVMAgent):
     def setup(self):
@@ -23,7 +23,14 @@ class MyAgent(MyLSVMAgent):
         min_bids = self.get_min_bids()
         valuations = self.get_valuations() 
         bids = {} 
-        ...
+
+        # Get top k goods by value and bid minimum allowed bid
+        sorted_goods = sorted(valuations.items(), key=lambda x: x[1], reverse=True)
+        
+        for good, val in sorted_goods[:8]:
+            if val > min_bids[good]:
+                bids[good] = min_bids[good]
+        
         return bids
 
     def regional_bidder_strategy(self): 
@@ -31,7 +38,14 @@ class MyAgent(MyLSVMAgent):
         min_bids = self.get_min_bids()
         valuations = self.get_valuations() 
         bids = {} 
-        ...
+
+        # Bid minimum bid on proximity goods
+        proximity = self.get_goods_in_proximity()
+        
+        for good in proximity:
+            if valuations[good] > min_bids[good]:
+                bids[good] = min_bids[good]
+        
         return bids
 
     def get_bids(self):
