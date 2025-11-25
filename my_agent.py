@@ -31,6 +31,7 @@ NAME = 'keyreg' # TODO: Please give your agent a NAME
 class MyAgent(MyLSVMAgent):
     def __init__(self, name):
         super().__init__(name)
+
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.state_size = NUM_GOODS * 4 + 2 # state: [vals, min_bids, cur_prices, eligib, is_national, round_num] * num goods
         self.num_bid_levels = 5 
@@ -43,6 +44,7 @@ class MyAgent(MyLSVMAgent):
             print(f"Loaded pre-trained model from {model_path}")
 
     def setup(self):
+        #TODO: Fill out with anything you want to initialize each auction
         self.prev_state = None
         self.prev_action = None
         self.round_utils = []
@@ -50,12 +52,15 @@ class MyAgent(MyLSVMAgent):
         return
         
     def get_state(self):
+
+        # Get list of states with values, min bids, and prices
         valuations = self.get_valuations()
         min_bids = self.get_min_bids()
         cur_prices = min_bids.copy() # cur_prices = self.get_current_prices()
         eligibility = {good: 1 for good in valuations.keys()} # eligibility = self.get_eligibility()
         sorted_goods = sorted(valuations.keys())
 
+        # Create state list
         state = []
         max_val = max(valuations.values()) if valuations else 1
         for good in sorted_goods[:NUM_GOODS]:
@@ -63,11 +68,8 @@ class MyAgent(MyLSVMAgent):
             state.append(min_bids.get(good, 0) / max_val)
             state.append(cur_prices.get(good, 0) / max_val) 
             state.append(eligibility.get(good, 1))
-        
-        while len(state) < NUM_GOODS * 4:
-            state.extend([0, 0, 0, 0])
 
-        state.append(1 if self.is_national_bidder() else 0)  # Bidder type
+        state.append(1 if self.is_national_bidder() else 0)
         state.append(self.round_num / 100.0)
 
         return np.array(state, dtype=np.float32)
@@ -96,13 +98,14 @@ class MyAgent(MyLSVMAgent):
         return bids
     
     def national_bidder_strategy(self):
+        # Get state, choose optimal action, get bid
         state = self.get_state()
         action = self.agent.select_action(state, training=self.training)
         self.prev_state, self.prev_action = state, action
-
         return self.action_to_bids(action)
     
     def regional_bidder_strategy(self):
+        # Get state, choose optimal action, get bid
         state = self.get_state()
         action = self.agent.select_action(state, training=self.training)
         self.prev_state, self.prev_action = state, action
@@ -111,7 +114,6 @@ class MyAgent(MyLSVMAgent):
         all_bids = self.action_to_bids(action)
         proximity = self.get_goods_in_proximity()
         bids = {good: bid for good, bid in all_bids.items() if good in proximity}
-
         return bids
     
     def get_bids(self):
@@ -122,6 +124,7 @@ class MyAgent(MyLSVMAgent):
     
     def calculate_reward(self):
         cur_util = self.calc_total_utility()
+        # reward = current util - prev util
         if len(self.round_utils) > 0:
             reward = cur_util - self.round_utils[-1]
         else:
@@ -188,12 +191,14 @@ class Memory:
 
 class DQNAgent:
     def __init__(self, state_size, action_size, epsilon=EPSILON, gamma=GAMMA, device='cpu'):
+        # Training params
         self.state_size = state_size
         self.action_size = action_size
         self.epsilon = epsilon
         self.gamma = gamma
         self.device = device
 
+        # Separate q network and target network so q network is not trained on itself
         self.q_net = DQNNetwork(state_size, action_size).to(device)
         self.target_net = DQNNetwork(state_size, action_size).to(device)
         self.target_net.load_state_dict(self.q_net.state_dict())
@@ -203,9 +208,9 @@ class DQNAgent:
         self.loss_fn = nn.MSELoss()
         self.memory = Memory(MEMORY_SIZE)
         self.steps_done = 0
-
         
     def select_action(self, state, training=True):
+        # Randomly choose random action or best action based on q values
         if training and random.random() < self.epsilon:
             return random.randrange(self.action_size)
         else:
@@ -224,12 +229,14 @@ class DQNAgent:
         transitions = self.memory.sample(BATCH_SIZE)
         batch = list(zip(*transitions))
         
+        # Get batches
         state_batch = torch.FloatTensor(batch[0]).to(self.device)
         action_batch = torch.LongTensor(batch[1]).unsqueeze(1).to(self.device)
         reward_batch = torch.FloatTensor(batch[2]).unsqueeze(1).to(self.device)
         next_state_batch = torch.FloatTensor(batch[3]).to(self.device)
         done_batch = torch.FloatTensor(batch[4]).unsqueeze(1).to(self.device)
         
+        # Q learning update
         cur_q = self.q_net(state_batch).gather(1, action_batch)
         with torch.no_grad():
             next_q = self.target_net(next_state_batch).max(1)[0].unsqueeze(1)
@@ -242,9 +249,6 @@ class DQNAgent:
         self.optimizer.step()
         
         return loss.item()
-    
-    def update_target_network(self):
-        self.target_net.load_state_dict(self.q_net.state_dict())
     
     def save(self, filepath):
         torch.save({
