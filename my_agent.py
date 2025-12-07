@@ -55,7 +55,20 @@ class MyAgent(MyLSVMAgent):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.state_size = STATE_SIZE # state: [vals, min_bids, cur_prices, eligib, is_national, round_num] * num goods
         self.action_size = ACTION_SIZE
-        self.network = DQNetwork(self.state_size, self.action_size, device=self.device)
+        self.network = DQNetwork(
+            STATE_SIZE,
+            ACTION_SIZE,
+            epsilon=EPSILON,
+            epsilon_min=EPSILON_MIN,
+            epsilon_decay=EPSILON_DECAY,
+            batch_size=BATCH_SIZE,
+            gamma=GAMMA,
+            lr=LR,
+            target_update=TARGET_UPDATE,
+            memory_size=MEMORY_SIZE,
+            episodes=EPISODES,
+            device=self.device
+        )
         self.training = True
         
         model_path = path_from_local_root("models/dqn_agent.pth")
@@ -67,19 +80,18 @@ class MyAgent(MyLSVMAgent):
         self.prev_state = None
         self.prev_action = None
         self.round_utils = []
-        self.round_num = 0
         return
     
     def national_bidder_strategy(self):
         # Get state, choose optimal action, get bid
-        state = self.get_state()
+        state = self.get_state().unsqueeze(0)
         action = self.network.select_action(state, training=self.training)
         self.prev_state, self.prev_action = state, action
         return self.action_to_bids(action)
     
     def regional_bidder_strategy(self):
         # Get state, choose optimal action, get bid
-        state = self.get_state()
+        state = self.get_state().unsqueeze(0)
         action = self.network.select_action(state, training=self.training)
         self.prev_state, self.prev_action = state, action
         
@@ -99,12 +111,11 @@ class MyAgent(MyLSVMAgent):
         if self.prev_state is None or not self.training:
             return
 
-        self.round_num += 1
         reward = self.get_reward()
         next_state = self.get_state()
         done = False
 
-        self.network.store(
+        self.network.store_transition(
             self.prev_state,
             self.prev_action,
             reward,

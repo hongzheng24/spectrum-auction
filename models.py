@@ -82,9 +82,22 @@ class Memory:
         self.memory.append((state, action, reward, next_state, done))
     
     def sample(self, batch_size):
-        return random.sample(self.memory, batch_size)
+        # return random.sample(self.memory, batch_size)
 
-    def __len__(self):
+        batch = random.sample(self.memory, batch_size)
+        
+        states, actions, rewards, next_states, dones = zip(*batch)
+        
+        return (
+            torch.stack(states),
+            torch.stack(actions),
+            torch.tensor(rewards, dtype=torch.float32),
+            torch.stack(next_states),
+            torch.tensor(dones, dtype=torch.float32)
+        )
+
+    @property
+    def len(self):
         return len(self.memory)
 
 class DQNetwork:
@@ -92,11 +105,12 @@ class DQNetwork:
     def __init__(
         self,
         state_size,
+        num_goods,
         action_size,
         epsilon=1.0,
         epsilon_min=0.01,
         epsilon_decay = 0.995,
-        batch_size=64,
+        batch_size=32,
         gamma=0.99,
         lr=0.001,
         target_update=1000,
@@ -107,6 +121,7 @@ class DQNetwork:
 
         # Hyperparameters
         self.state_size = state_size
+        self.num_goods = num_goods
         self.action_size = action_size
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
@@ -120,15 +135,15 @@ class DQNetwork:
         self.device = device
 
         # Separate policy network and target network so policy network is not trained on itself
-        self.policy_net = NeuralNetwork(state_size, action_size).to(device)
-        self.target_net = NeuralNetwork(state_size, action_size).to(device)
+        self.policy_net = NeuralNetwork(state_size, num_goods, action_size).to(device)
+        self.target_net = NeuralNetwork(state_size, num_goods, action_size).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
         self.optimizer = optim.Adam(self.policy_net.parameters(), lr=self.lr)
         self.loss = nn.MSELoss()
         self.memory = Memory(capacity=self.memory_size)
-        self.steps_done = 0
+        self.steps = 0
         
     def select_action(self, state, training=True):
         '''
@@ -148,49 +163,48 @@ class DQNetwork:
         if self.memory.len < self.batch_size:
             return
 
-        steps = 0
+        print('=====RUNNING DQN TRAIN=======')
+        # Optimize
+        state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.memory.sample(self.batch_size)
 
-        for _ in range(self.episodes):
+        state_batch = state_batch.to(self.device)
+        action_batch = action_batch.to(self.device).long()
+        reward_batch = reward_batch.to(self.device)
+        next_state_batch = next_state_batch.to(self.device)
+        done_batch = done_batch.to(self.device)
+        # state_batch = torch.FloatTensor(state_batch)
+        # action_batch = torch.LongTensor(action_batch).unsqueeze(1)
+        # reward_batch = torch.FloatTensor(reward_batch)
+        # next_state_batch = torch.FloatTensor(next_state_batch)
+        # done_batch = torch.FloatTensor(done_batch)
 
-            # Optimize
-            batch = self.memory.sample(self.batch_size)
-            state_batch, action_batch, reward_batch, next_state_batch, done_batch = zip(*batch)
+        # Calculate q value
+        q_values_all = self.policy_net(state_batch) # (batch, num_goods, actions)
+        action_batch = action_batch.unsqueeze(-1)   # (batch, num_goods, 1)
+        q_values = q_values_all.gather(2, action_batch).squeeze(-1) # (batch, num_goods)
 
-            state_batch = torch.FloatTensor(state_batch)
-            action_batch = torch.LongTensor(action_batch).unsqueeze(1)
-            reward_batch = torch.FloatTensor(reward_batch)
-            next_state_batch = torch.FloatTensor(next_state_batch)
-            done_batch = torch.FloatTensor(done_batch)
+        with torch.no_grad():
+            max_next_q_values = self.target_net(next_state_batch).max(2)[0]
 
-            # Calculate q value
-            q_values_all = self.policy_net(state_batch) # (batch, num_goods, actions)
-            action_batch = action_batch.unsqueeze(-1)   # (batch, num_goods, 1)
-            q_values = q_values_all.gather(2, action_batch).squeeze(-1) # (batch, num_goods)
+            # print('rewards shape: \t', reward_batch.shape, '\t max_next_q_vals shape: \t', max_next_q_values.shape, '\t done batch shape: \t', done_batch.shape)
+            target_q_values = reward_batch.unsqueeze(1) + self.gamma * max_next_q_values * (1 - done_batch.unsqueeze(1))
 
-            with torch.no_grad():
-                # max_next_q_values = self.target_net(next_state_batch).max(1)[0]
-                # target_q_values = reward_batch + self.gamma * max_next_q_values * (1 - done_batch) # TODO: Why this target in bellman?
+        
+        loss = self.loss(q_values, target_q_values)
 
-                max_next_q_values = self.target_net(next_state_batch).max(2)[0]
-                target_q_values = reward_batch + self.gamma * max_next_q_values * (1 - done_batch)
+        self.optimizer.zero_grad()
+        loss.backward()
+        self.optimizer.step()
 
-            
-            loss = self.loss(q_values, target_q_values)
-
-            self.optimizer.zero_grad()
-            loss.backward()
-            self.optimizer.step()
-
-            # Update target net
-            if steps % self.target_update == 0:
-                self.target_net.load_state_dict(self.policy_net.state_dict())
-
-            steps += 1
+        # Update target net
+        if self.steps % self.target_update == 0:
+            self.target_net.load_state_dict(self.policy_net.state_dict())
         
         # Decay epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon_decay + self.epsilon)
         
         # rewards.append(episode_reward)
+        return loss
     
     def store_transition(self, state, action, reward, next_state, done):
         
@@ -203,7 +217,7 @@ class DQNetwork:
             'target_net': self.target_net.state_dict(),
             'optimizer': self.optimizer.state_dict(),
             'epsilon': self.epsilon,
-            'steps_done': self.steps_done
+            'steps': self.steps
         }, filepath)
     
     def load(self, filepath):
@@ -213,6 +227,6 @@ class DQNetwork:
             self.target_net.load_state_dict(checkpoint['target_net'])
             self.optimizer.load_state_dict(checkpoint['optimizer'])
             self.epsilon = checkpoint['epsilon']
-            self.steps_done = checkpoint['steps_done']
+            self.steps = checkpoint['steps']
             return True
         return False

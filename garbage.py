@@ -1,4 +1,7 @@
+DQN Training Implementation for Spectrum Auctions
 
+
+## First train
 def train(self):
     if self.memory.get_len() < BATCH_SIZE:
         return None
@@ -258,3 +261,16 @@ class DQNetwork:
             self.steps_done = checkpoint['steps_done']
             return True
         return False
+
+
+
+def get_reward(self):
+    cur_util = self.calc_total_utility()
+    # reward = current util - prev util
+    if len(self.round_utils) > 0:
+        reward = cur_util - self.round_utils[-1]
+    else:
+        reward = cur_util
+    
+    self.round_utils.append(cur_util)
+    return reward
