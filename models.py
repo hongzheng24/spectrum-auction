@@ -146,6 +146,8 @@ class DQNetwork:
         self.loss = nn.MSELoss()
         self.memory = Memory(capacity=self.memory_size)
         self.steps = 0
+
+        self.loss_history = []
         
     def select_action(self, state, training=True):
         '''
@@ -165,7 +167,6 @@ class DQNetwork:
         if self.memory.len < self.batch_size:
             return
 
-        print('=====RUNNING DQN TRAIN=======')
         # Optimize
         state_batch, action_batch, reward_batch, next_state_batch, done_batch = self.memory.sample(self.batch_size)
 
@@ -204,8 +205,11 @@ class DQNetwork:
         
         # Decay epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon_decay + self.epsilon)
+
+        self.steps += 1
         
         # rewards.append(episode_reward)
+        self.loss_history.append(loss)
         return loss
     
     def store_transition(self, state, action, reward, next_state, done):
@@ -213,22 +217,38 @@ class DQNetwork:
         self.memory.push(state, action, reward, next_state, done)
         return
 
-    def save(self, filepath):
-        torch.save({
-            'q_net': self.policy_net.state_dict(),
-            'target_net': self.target_net.state_dict(),
-            'optimizer': self.optimizer.state_dict(),
-            'epsilon': self.epsilon,
-            'steps': self.steps
-        }, filepath)
+
     
-    def load(self, filepath):
-        if os.path.exists(filepath):
-            checkpoint = torch.load(filepath, map_location=self.device)
-            self.policy_net.load_state_dict(checkpoint['q_net'])
-            self.target_net.load_state_dict(checkpoint['target_net'])
-            self.optimizer.load_state_dict(checkpoint['optimizer'])
-            self.epsilon = checkpoint['epsilon']
-            self.steps = checkpoint['steps']
-            return True
-        return False
+    def save_checkpoint(self, path: str):
+        """Save training checkpoint."""
+        checkpoint = {
+            'policy_net_state_dict': self.policy_net.state_dict(),
+            'target_net_state_dict': self.target_net.state_dict(),
+            'optimizer_state_dict': self.optimizer.state_dict(),
+            'steps': self.steps,
+            'loss_history': self.loss_history,
+            'reward_history': self.reward_history,
+            'hyperparameters': {
+                'state_dim': self.state_size,
+                'num_goods': self.num_goods,
+                'actions_per_good': self.action_size,
+                'gamma': self.gamma,
+                'batch_size': self.batch_size,
+            }
+        }
+        torch.save(checkpoint, path)
+        print(f"Checkpoint saved to {path}")
+    
+    def load_checkpoint(self, path: str):
+        """Load training checkpoint."""
+        checkpoint = torch.load(path, map_location=self.device)
+        
+        self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
+        self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
+        self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
+        self.steps = checkpoint['steps']
+        self.loss_history = checkpoint.get('loss_history', [])
+        self.reward_history = checkpoint.get('reward_history', [])
+        
+        print(f"Checkpoint loaded from {path}")
+        print(f"Resuming from step {self.total_steps}, episode {self.episodes_completed}")

@@ -274,3 +274,25 @@ def get_reward(self):
     
     self.round_utils.append(cur_util)
     return reward
+
+
+
+    def save(self, filepath):
+        torch.save({
+            'q_net': self.policy_net.state_dict(),
+            'target_net': self.target_net.state_dict(),
+            'optimizer': self.optimizer.state_dict(),
+            'epsilon': self.epsilon,
+            'steps': self.steps
+        }, filepath)
+    
+    def load(self, filepath):
+        if os.path.exists(filepath):
+            checkpoint = torch.load(filepath, map_location=self.device)
+            self.policy_net.load_state_dict(checkpoint['q_net'])
+            self.target_net.load_state_dict(checkpoint['target_net'])
+            self.optimizer.load_state_dict(checkpoint['optimizer'])
+            self.epsilon = checkpoint['epsilon']
+            self.steps = checkpoint['steps']
+            return True
+        return False
