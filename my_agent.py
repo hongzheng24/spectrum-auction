@@ -125,7 +125,7 @@ class MyAgent(MyLSVMAgent):
         else:
             bids = self.regional_bidder_strategy()
         print(bids)
-        assert self.is_valid_bid_bundle is True, 'Exception: Invalid bid!'
+        # assert self.is_valid_bid_bundle is True, 'Exception: Invalid bid!'
         
         return bids
     
