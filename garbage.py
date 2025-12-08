@@ -1,6 +1,20 @@
 DQN Training Implementation for Spectrum Auctions
 
 
+
+
+
+        # print('=====testing map_to_list========')
+        # map = self.get_valuations()
+        # map_as_list = self.map_to_list(map)
+        # print('valuation list: ', map_as_list)
+        # for i, good in enumerate('ABCDEFGHIJKLMNOPQR'):
+        #     assert map_as_list[i] == map[good], 'Error: map_to_list is bugged.'
+        # print('====Successful=====')
+
+
+
+
 ## First train
 def train(self):
     if self.memory.get_len() < BATCH_SIZE:
@@ -296,3 +310,115 @@ def get_reward(self):
             self.steps = checkpoint['steps']
             return True
         return False
+
+
+                # print('=====testing map_to_list========')
+        # map = self.get_valuations()
+        # map_as_list = self.map_to_list(map)
+        # print('valuation list: ', map_as_list)
+        # for i, good in enumerate('ABCDEFGHIJKLMNOPQR'):
+        #     assert map_as_list[i] == map[good], 'Error: map_to_list is bugged.'
+        # print('====Successful=====')
+
+        # print('=====proximity_to_mask========')
+        # prox_mask = self.proximity_to_mask(self.get_goods_in_proximity())
+        # print(prox_mask)
+        # assert prox_mask == [1.0] * 18, 'Error: prox_to_mask bugged'
+
+        # prox_mask = self.proximity_to_mask(['A', 'B', 'C', 'E', 'Q', 'R'])
+        # print(prox_mask)
+        # assert prox_mask == [1.0, 1.0, 1.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 1.0, 1.0], 'Error: prox_to_mask 2'
+        # print('====Successful=====')
+
+
+
+
+        # print('prices: ', prices) #, len(prices))
+        # print('min_bids: ', min_bids)
+        # print('alloc: ', allocation) #, len(allocation))
+        # print('is_nat: ', is_national) #, len(is_national))
+        # print('round: ', round) #, len(round))
+        # print('prox: ', proximity) #, len(proximity))
+        # print('util: ', utility) #, len(utility))
+
+        # print('num_goods', self.get_num_goods())
+        # print('goods', self.get_goods())
+        # print('tent alloc', self.get_tentative_allocation())
+
+        # print('vals_as_arr: ', valuations, len(valuations)) #, len(valuations))
+        # # print('get_vals: ', self.get_valuations()) #, len(valuations))
+        # print('===get val for each good=====')
+        # for good in self.get_goods():
+        #     print(good, '\t', self.get_valuation(good))
+
+
+                # print('prices: ', prices) #, len(prices))
+        # print('min_bids: ', min_bids)
+        # print('alloc: ', allocation) #, len(allocation))
+        # print('is_nat: ', is_national) #, len(is_national))
+        # print('round: ', round) #, len(round))
+        # print('prox: ', proximity) #, len(proximity))
+        # print('util: ', utility) #, len(utility))
+
+        # # print('num_goods', self.get_num_goods())
+        # print('goods', self.goods)
+        # # print('tent alloc', self.get_tentative_allocation())
+
+
+
+
+    def action_to_bids(self, actions: torch.Tensor) -> dict:
+        '''
+        Parameters
+        ----------
+        action: torch.Tensor
+            Tensor of shape (num_goods,) with values 0-action_size
+            for bid level action for each good.
+                0: No bid
+                1: Bid valuation
+                2-6 : min_bid * multiplier in [1.0, 1.05, 1.1, 1.2, 1.5]
+
+        Returns
+        -------
+        dict: Dictionary of good names to bids.
+        '''
+        min_bids = self.get_min_bids()
+        valuations = self.get_valuations() 
+        bids = {} 
+        print('########action_to_bids ### actions: ', actions)
+        for i, good in enumerate(self.goods):
+            action = int(actions[i])
+            if action == 0:
+                continue
+            if action == 1:
+                bid = valuations[good]
+            elif 2 <= action and action <= len(self.multipliers):
+                bid = min_bids[good] * self.multipliers[action]
+            else:
+                raise Exception('Invalid action')
+            if bid >= min_bids[good]:
+                bids[good] = bid
+        return bids
+
+
+    def select_action(self, state, training=True):
+        '''
+        Epsilon-randomly choose random action or best action based on Q values.
+
+        Args:
+            state: torch.Tensor
+                Tensor of concatenation of current state information
+                (prices, valuations, allocations, etc)
+        Returns
+            int:
+                Chosen action
+        '''
+        # Explore random action
+        if training and random.random() < self.epsilon:
+            return random.randrange(self.action_size)
+        # Exploit optimal action
+        else:
+            # with torch.no_grad():
+            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            q_values = self.policy_net(state)
+            return torch.argmax(q_values).item()    

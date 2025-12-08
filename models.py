@@ -18,24 +18,8 @@ from path_utils import path_from_local_root
 
 from typing import Tuple
 
-# Hyperparams
-# GAMMA = 0.95
-# EPSILON = 1.0
-# EPSILON_MIN = 0.01 
-# EPSILON_DECAY = 0.995
-# LEARNING_RATE = 0.001
-# BATCH_SIZE = 64
-# MEMORY_SIZE = 10000
-# TARGET_UPDATE = 10
-# HIDDEN_SIZE = 128 
-# DROPOUT = 0.2
-# NUM_GOODS = 12
-# EPISODES = 100
-
-# Hello World
-
 class NeuralNetwork(nn.Module):
-    def __init__(self, state_size, num_goods, action_size, hidden_size=128, dropout=0.1):
+    def __init__(self, state_size, num_goods, action_size, hidden_size=64, dropout=0.1):
         super().__init__()
         
         self.state_size = state_size
@@ -71,9 +55,8 @@ class NeuralNetwork(nn.Module):
         State -> Encoder -> Heads * num_goods.
         State to encoding to num_goods heads.
         '''
-
         encoding = self.encoder(state)
-        q_values = torch.stack([head(encoding) for head in self.q_heads], dim=1)
+        q_values = torch.stack([head(encoding) for head in self.q_heads], dim=1) #.squeeze(2)
         return q_values
 
 class Memory:
@@ -84,14 +67,11 @@ class Memory:
         self.memory.append((state, action, reward, next_state, done))
     
     def sample(self, batch_size):
-        # return random.sample(self.memory, batch_size)
 
         batch = random.sample(self.memory, batch_size)
-        
         states, actions, rewards, next_states, dones = zip(*batch)
-        
         return (
-            torch.stack(states),
+            torch.stack(states).squeeze(1),
             torch.stack(actions),
             torch.tensor(rewards, dtype=torch.float32),
             torch.stack(next_states),
@@ -109,6 +89,7 @@ class DQNetwork:
         state_size,
         num_goods,
         action_size,
+        hidden_size=64,
         epsilon=1.0,
         epsilon_min=0.01,
         epsilon_decay = 0.995,
@@ -118,6 +99,7 @@ class DQNetwork:
         target_update=1000,
         memory_size=10000,
         episodes=1000,
+        dropout=0.0,
         device='cpu'
     ):
 
@@ -125,6 +107,7 @@ class DQNetwork:
         self.state_size = state_size
         self.num_goods = num_goods
         self.action_size = action_size
+        self.hidden_size = hidden_size
         self.epsilon = epsilon
         self.epsilon_min = epsilon_min
         self.epsilon_decay = epsilon_decay
@@ -134,11 +117,24 @@ class DQNetwork:
         self.target_update = target_update
         self.memory_size = memory_size
         self.episodes = episodes
+        self.dropout = dropout
         self.device = device
 
         # Separate policy network and target network so policy network is not trained on itself
-        self.policy_net = NeuralNetwork(state_size, num_goods, action_size).to(device)
-        self.target_net = NeuralNetwork(state_size, num_goods, action_size).to(device)
+        self.policy_net = NeuralNetwork(
+            state_size=self.state_size,
+            num_goods=self.num_goods,
+            action_size=self.action_size,
+            hidden_size=self.hidden_size,
+            dropout=self.dropout,
+        ).to(device)
+        self.target_net = NeuralNetwork(
+            state_size=self.state_size,
+            num_goods=self.num_goods,
+            action_size=self.action_size,
+            hidden_size=self.hidden_size,
+            dropout=self.dropout,
+        ).to(device)
         self.target_net.load_state_dict(self.policy_net.state_dict())
         self.target_net.eval()
 
@@ -152,16 +148,32 @@ class DQNetwork:
     def select_action(self, state, training=True):
         '''
         Epsilon-randomly choose random action or best action based on Q values.
+
+        Args:
+            state: torch.Tensor
+                Tensor of concatenation of current state information
+                (prices, valuations, allocations, etc)
+        Returns
+            torch.Tensor
+                Action tensor of shape (num_goods,)
         '''
         # Explore random action
         if training and random.random() < self.epsilon:
-            return random.randrange(self.action_size)
+            action = torch.randint(
+                0, self.action_size,
+                (self.num_goods,),
+                dtype=torch.long
+            )
+            return action
         # Exploit optimal action
         else:
-            # with torch.no_grad():
-            state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
-            q_values = self.policy_net(state)
-            return torch.argmax(q_values).item()    
+            # state = torch.FloatTensor(state).unsqueeze(0).to(self.device)
+            # q_values = self.policy_net(state)
+            # return torch.argmax(q_values).item() 
+            with torch.no_grad():
+                q_values = self.policy_net(state)
+                actions = q_values.argmax(dim=-1).squeeze(0).cpu()
+                return actions
 
     def train(self):
         if self.memory.len < self.batch_size:
@@ -175,26 +187,18 @@ class DQNetwork:
         reward_batch = reward_batch.to(self.device)
         next_state_batch = next_state_batch.to(self.device)
         done_batch = done_batch.to(self.device)
-        # state_batch = torch.FloatTensor(state_batch)
-        # action_batch = torch.LongTensor(action_batch).unsqueeze(1)
-        # reward_batch = torch.FloatTensor(reward_batch)
-        # next_state_batch = torch.FloatTensor(next_state_batch)
-        # done_batch = torch.FloatTensor(done_batch)
 
         # Calculate q value
         q_values_all = self.policy_net(state_batch) # (batch, num_goods, actions)
         action_batch = action_batch.unsqueeze(-1)   # (batch, num_goods, 1)
-        q_values = q_values_all.gather(2, action_batch).squeeze(-1) # (batch, num_goods)
+        # q_values = q_values_all.gather(2, action_batch).squeeze(-1) # (batch, num_goods)
+        q_values = torch.gather(q_values_all, 2, action_batch).squeeze(-1)
 
         with torch.no_grad():
             max_next_q_values = self.target_net(next_state_batch).max(2)[0]
-
-            # print('rewards shape: \t', reward_batch.shape, '\t max_next_q_vals shape: \t', max_next_q_values.shape, '\t done batch shape: \t', done_batch.shape)
             target_q_values = reward_batch.unsqueeze(1) + self.gamma * max_next_q_values * (1 - done_batch.unsqueeze(1))
 
-        
         loss = self.loss(q_values, target_q_values)
-
         self.optimizer.zero_grad()
         loss.backward()
         self.optimizer.step()
@@ -204,7 +208,7 @@ class DQNetwork:
             self.target_net.load_state_dict(self.policy_net.state_dict())
         
         # Decay epsilon
-        self.epsilon = max(self.epsilon_min, self.epsilon_decay + self.epsilon)
+        self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
 
         self.steps += 1
         
@@ -213,12 +217,9 @@ class DQNetwork:
         return loss
     
     def store_transition(self, state, action, reward, next_state, done):
-        
         self.memory.push(state, action, reward, next_state, done)
         return
 
-
-    
     def save_checkpoint(self, path: str):
         """Save training checkpoint."""
         checkpoint = {

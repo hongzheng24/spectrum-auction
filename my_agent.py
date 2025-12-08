@@ -30,7 +30,7 @@ MEMORY_SIZE = 10000
 TARGET_UPDATE = 10
 HIDDEN_SIZE = 128 
 DROPOUT = 0.2
-NUM_GOODS = 12
+NUM_GOODS = 18
 EPISODES = 100
 
 
@@ -40,9 +40,15 @@ EPISODES = 100
 # 3. Define reward
 # 4. Implement some nuance
 # 5. Writeup
-
-STATE_SIZE = ...
-ACTION_SIZE = ...
+MULTIPLIERS = {
+    2: 1.0,
+    3: 1.05,
+    4: 1.1,
+    5: 1.2,
+    6: 1.5
+}
+STATE_SIZE = 93 # 18 * 5 + 1 * 3
+ACTION_SIZE = len(MULTIPLIERS) + 2 # Bid nothing, bid valuation, or bid multiplier times min bid
 
 ################
 
@@ -53,27 +59,39 @@ class MyAgent(MyLSVMAgent):
         super().__init__(name)
 
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-        self.state_size = STATE_SIZE # state: [vals, min_bids, cur_prices, eligib, is_national, round_num] * num goods
+        self.state_size = STATE_SIZE
         self.action_size = ACTION_SIZE
         self.network = DQNetwork(
             STATE_SIZE,
+            NUM_GOODS,
             ACTION_SIZE,
+            hidden_size=HIDDEN_SIZE,
             epsilon=EPSILON,
             epsilon_min=EPSILON_MIN,
             epsilon_decay=EPSILON_DECAY,
             batch_size=BATCH_SIZE,
             gamma=GAMMA,
-            lr=LR,
+            lr=LEARNING_RATE,
             target_update=TARGET_UPDATE,
             memory_size=MEMORY_SIZE,
             episodes=EPISODES,
+            dropout=DROPOUT,
             device=self.device
         )
         self.training = True
+        self.goods = sorted(list(self.get_goods()))
+
+        self.multipliers = MULTIPLIERS
+        self.action_size = ACTION_SIZE
+
+        self.prev_state = None
+        self.prev_action = None
+        self.round_utils = []
         
-        model_path = path_from_local_root("models/dqn_agent.pth")
-        if self.network.load(model_path):
-            print(f"Loaded pre-trained model from {model_path}")
+        # TODO: Model save/load
+        # model_path = path_from_local_root("models/dqn_agent.pth")
+        # if self.network.load_checkpoint(model_path):
+        #     print(f"Loaded pre-trained model from {model_path}")
 
     def setup(self):
         #TODO: Fill out with anything you want to initialize each auction
@@ -103,9 +121,13 @@ class MyAgent(MyLSVMAgent):
     
     def get_bids(self):
         if self.is_national_bidder():
-            return self.national_bidder_strategy()
+            bids =  self.national_bidder_strategy()
         else:
-            return self.regional_bidder_strategy()
+            bids = self.regional_bidder_strategy()
+        print(bids)
+        assert self.is_valid_bid_bundle is True, 'Exception: Invalid bid!'
+        
+        return bids
     
     def update(self):
         if self.prev_state is None or not self.training:
@@ -126,9 +148,6 @@ class MyAgent(MyLSVMAgent):
         loss = self.network.train()
 
         return
-            
-        # if loss is not None and self.round_number % 10 == 0:
-        #     print(f"Round {self.round_number}, Loss: {loss:.4f}, Epsilon: {self.dqn_agent.epsilon:.3f}")
 
     def teardown(self):
         #TODO: Fill out with anything you want to run at the end of each auction
@@ -136,10 +155,9 @@ class MyAgent(MyLSVMAgent):
 
     def get_state(self) -> torch.Tensor():
         '''
-        Returns
-        -------
-        state: torch.Tensor()
-            Tensor of shape (, state_size), containing ...
+        Returns:
+            state: torch.Tensor()
+                Tensor of shape (, state_size), containing ...
         '''
 
         # 1. prices = agent.get_current_prices()
@@ -157,53 +175,105 @@ class MyAgent(MyLSVMAgent):
         #    ])
         
         # 10. return torch.tensor(state, dtype=float32)
-        return
+
+        prices = self.get_current_prices().flatten() if self.get_current_prices() is not None else [0.0] * 18                          # 18
+        valuations = self.map_to_ndarray(self.get_valuations()).flatten()        # 18
+        min_bids = self.map_to_ndarray(self.get_min_bids()).flatten()            # 18
+        allocation = self.set_to_list(self.get_tentative_allocation()) # TODO one hot encoding # 18
+        # margin = (valuations - prices) / scale,
+        is_national = [1.0 if self.is_national_bidder() else 0.0]      # 1
+        round = [self.get_current_round()]                              # 1
+        proximity = self.proximity_to_mask(self.get_goods_in_proximity())                      # 18
+        utility = [self.calc_total_utility()]                             # 1
+
+        # print('prices: ', prices) #, len(prices))
+        # print('valuations: ', valuations.shape)
+        # print('min_bids: ', min_bids.shape)
+        # print('alloc: ', allocation) #, len(allocation))
+        # print('is_nat: ', is_national) #, len(is_national))
+        # print('round: ', round) #, len(round))
+        # print('prox: ', proximity) #, len(proximity))
+        # print('util: ', utility) #, len(utility))
+
+        state = np.concatenate((
+            prices,
+            valuations,
+            min_bids,
+            allocation,
+            is_national,
+            round,
+            proximity,
+            utility
+        ))
+        state= torch.tensor(state, dtype=torch.float32)
+        return state
 
     def action_to_bids(self, actions: torch.Tensor) -> dict:
         '''
-        Parameters
-        ----------
-        action: torch.Tensor
-            Tensor of shape (num_goods,) with values 0-action_size
-            for bid level action for each good.
-                0: No bid
-                1: Bid valuation
-                2-6 : min_bid * multiplier in [1.0, 1.05, 1.1, 1.2, 1.5]
+        Args:
+            action: torch.Tensor
+                Tensor of shape (num_goods,) with values 0-action_size
+                for bid level action for each good.
+                    0: No bid
+                    1: Bid valuation
+                    2-6 : min_bid * multiplier in [1.0, 1.05, 1.1, 1.2, 1.5]
 
-        Returns
-        -------
-        dict: Dictionary of good names to bids.
+        Returns:
+            dict: Dictionary of good names to bids.
         '''
         min_bids = self.get_min_bids()
         valuations = self.get_valuations() 
-        bids = {} 
-        multipliers = {
-            2: 1.0,
-            3: 1.05,
-            4: 1.1,
-            5: 1.2,
-            6: 1.5
-        }
-
-        for i, good in enumerate(self.get_goods):
+        bids = {}
+        for i, good in enumerate(self.goods):
             action = int(actions[i])
             if action == 0:
+                # bids[good] = None
                 continue
             if action == 1:
                 bid = valuations[good]
-            elif 2 <= action and action <=6:
-                bid = min_bids[good] * multipliers[action]
+            elif 2 <= action and action < len(self.multipliers) + 2:
+                bid = min_bids[good] * self.multipliers[action]
             else:
                 raise Exception('Invalid action')
             if bid >= min_bids[good]:
                 bids[good] = bid
+        
         return bids
 
-    def get_reward(self, done):
-        if done:
-            return self.calc_total_utility()
-        else:
-            return 0.0
+    def get_reward(self):
+        return self.calc_total_utility()
+
+    def map_to_list(self, map):
+        '''
+        Args:
+            map: dict
+                Mapping of goods (str A-R) to some utility value
+                (tentative_allocation, valuations, etc)
+        
+        Returns:
+            map_as_list: list
+                List of utility value where i-th row corresponds
+                to i-th good
+        '''
+        map_as_list = []
+        for i, good in enumerate(self.goods):
+            map_as_list.append(map[good])
+        return map_as_list
+
+    def set_to_list(self, init_set):
+        set_as_list = [0.0] * 18
+        for i, good in enumerate(self.goods):
+            if good in init_set:
+                set_as_list[i] = 1.0
+        return set_as_list
+
+    def proximity_to_mask(self, proximity_list):
+        prox_mask = [0.0] * NUM_GOODS
+
+        for good in proximity_list:
+            good_idx = ord(good) - ord('A')
+            prox_mask[good_idx] = 1.0
+        return prox_mask
 
 ################### SUBMISSION #####################
 my_agent_submission = MyAgent(NAME)

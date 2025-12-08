@@ -1,7 +1,12 @@
 import unittest
 
+from my_agent import *
 from models import *
 
+
+# state_size = 93
+# action_size = 5
+# num_goods = 18
 
 class IOTest(unittest.TestCase):
     
@@ -204,6 +209,19 @@ class IOTest(unittest.TestCase):
             for k, v in net.named_parameters()
         )
         assert changed, "Parameters did not update"
+
+    # def test_lsvm_agent_get_state(self):
+
+    #     agent = MyAgent('keyreg')
+    #     # states = torch.randn(128, 93)
+    #     # actions = torch.randint(0, 5, (128, 18))
+    #     # rewards = torch.randn(128)
+    #     # next_states = torch.randn(128, 93)
+    #     # dones = torch.zeros(128)
+
+    #     state = agent.get_state()
+    #     print(state)
+
 
     def test_gradient_flow(self):
         net = NeuralNetwork(state_size=93, num_goods=18, action_size=5)
