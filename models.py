@@ -18,6 +18,11 @@ from path_utils import path_from_local_root
 
 from typing import Tuple
 
+CHECKPOINT_DIR = 'checkpoints'
+FILENAME = 'dqn_model.pt'
+FILEPATH = 'checkpoints/dqn_model.pt'
+
+
 class NeuralNetwork(nn.Module):
     def __init__(self, state_size, num_goods, action_size, hidden_size=64, dropout=0.1):
         super().__init__()
@@ -100,6 +105,10 @@ class DQNetwork:
         memory_size=10000,
         episodes=1000,
         dropout=0.0,
+        save_freq=100,
+        checkpoint_dir='',
+        filename='',
+        filepath='',
         device='cpu'
     ):
 
@@ -118,7 +127,12 @@ class DQNetwork:
         self.memory_size = memory_size
         self.episodes = episodes
         self.dropout = dropout
+        self.checkpoint_dir = checkpoint_dir
+        self.filename = filename
+        self.filepath = filepath
         self.device = device
+
+        self.save_freq = save_freq
 
         # Separate policy network and target network so policy network is not trained on itself
         self.policy_net = NeuralNetwork(
@@ -206,6 +220,9 @@ class DQNetwork:
         # Update target net
         if self.steps % self.target_update == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
+        if self.steps % self.save_freq == 0:
+            self.save_checkpoint()
+
         
         # Decay epsilon
         self.epsilon = max(self.epsilon_min, self.epsilon_decay * self.epsilon)
@@ -220,7 +237,7 @@ class DQNetwork:
         self.memory.push(state, action, reward, next_state, done)
         return
 
-    def save_checkpoint(self, path: str):
+    def save_checkpoint(self, dir: str=CHECKPOINT_DIR, filename=FILENAME):
         """Save training checkpoint."""
         checkpoint = {
             'policy_net_state_dict': self.policy_net.state_dict(),
@@ -228,7 +245,7 @@ class DQNetwork:
             'optimizer_state_dict': self.optimizer.state_dict(),
             'steps': self.steps,
             'loss_history': self.loss_history,
-            'reward_history': self.reward_history,
+            # 'reward_history': self.reward_history,
             'hyperparameters': {
                 'state_dim': self.state_size,
                 'num_goods': self.num_goods,
@@ -237,19 +254,25 @@ class DQNetwork:
                 'batch_size': self.batch_size,
             }
         }
-        torch.save(checkpoint, path)
-        print(f"Checkpoint saved to {path}")
+        os.makedirs(dir, exist_ok=True)
+        filepath = os.path.join(dir, filename)
+        torch.save(checkpoint, filepath)
+        print(f"Checkpoint saved to {filepath}")
     
-    def load_checkpoint(self, path: str):
+    def load_checkpoint(self, filepath: str=CHECKPOINT_DIR):
         """Load training checkpoint."""
-        checkpoint = torch.load(path, map_location=self.device)
+        if not os.path.exists(filepath):
+            print(f"Checkpoint not found: {filepath}")
+            return None
+        
+        checkpoint = torch.load(filepath, map_location=self.device)
         
         self.policy_net.load_state_dict(checkpoint['policy_net_state_dict'])
         self.target_net.load_state_dict(checkpoint['target_net_state_dict'])
         self.optimizer.load_state_dict(checkpoint['optimizer_state_dict'])
         self.steps = checkpoint['steps']
         self.loss_history = checkpoint.get('loss_history', [])
-        self.reward_history = checkpoint.get('reward_history', [])
+        # self.reward_history = checkpoint.get('reward_history', [])
         
-        print(f"Checkpoint loaded from {path}")
-        print(f"Resuming from step {self.total_steps}, episode {self.episodes_completed}")
+        print(f"Checkpoint loaded from {filepath}")
+        print(f"Resuming from step {self.steps}")

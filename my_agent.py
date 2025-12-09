@@ -27,11 +27,18 @@ EPSILON_DECAY = 0.995
 LEARNING_RATE = 0.001
 BATCH_SIZE = 64
 MEMORY_SIZE = 10000
-TARGET_UPDATE = 10
+TARGET_UPDATE = 1000
 HIDDEN_SIZE = 128 
 DROPOUT = 0.2
 NUM_GOODS = 18
-EPISODES = 100
+EPISODES = 1000
+
+
+SAVE_FREQ = 100
+CHECKPOINT_DIR = 'checkpoints'
+FILENAME = 'dqn_model_normalized.pt'
+FILEPATH = 'checkpoints/dqn_model_normalized.pt'
+
 
 
 ############ TODO ########
@@ -47,7 +54,7 @@ MULTIPLIERS = {
     5: 1.2,
     6: 1.5
 }
-STATE_SIZE = 93 # 18 * 5 + 1 * 3
+STATE_SIZE = 18 * 5 + 1 * 3
 ACTION_SIZE = len(MULTIPLIERS) + 2 # Bid nothing, bid valuation, or bid multiplier times min bid
 
 ################
@@ -61,6 +68,7 @@ class MyAgent(MyLSVMAgent):
         self.device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
         self.state_size = STATE_SIZE
         self.action_size = ACTION_SIZE
+
         self.network = DQNetwork(
             STATE_SIZE,
             NUM_GOODS,
@@ -76,10 +84,24 @@ class MyAgent(MyLSVMAgent):
             memory_size=MEMORY_SIZE,
             episodes=EPISODES,
             dropout=DROPOUT,
-            device=self.device
+            device=self.device,
+            checkpoint_dir=CHECKPOINT_DIR,
+            filename=FILENAME,
+            filepath=FILEPATH
         )
+        # Try to load pre-trained model
+        model_path = path_from_local_root(FILEPATH)
+        if os.path.exists(model_path):
+            self.network.load_checkpoint(model_path)
+            self.training = False  # Use trained model without exploration
+        else:
+            self.training = True  # Train from scratch
+
+
+
         self.training = True
         self.goods = sorted(list(self.get_goods()))
+        # print('SELF.GOODS: ', self.goods)
 
         self.multipliers = MULTIPLIERS
         self.action_size = ACTION_SIZE
@@ -124,9 +146,16 @@ class MyAgent(MyLSVMAgent):
             bids =  self.national_bidder_strategy()
         else:
             bids = self.regional_bidder_strategy()
-        print(bids)
-        # assert self.is_valid_bid_bundle is True, 'Exception: Invalid bid!'
-        
+        # print(bids)
+        # bids = self.clip_bids(bids)
+        # print(bids)
+
+        # #####
+        # if self.is_valid_bid_bund
+        # #####
+
+
+        assert self.is_valid_bid_bundle(bids) is True, 'Exception: Invalid bid!'
         return bids
     
     def update(self):
@@ -175,16 +204,21 @@ class MyAgent(MyLSVMAgent):
         #    ])
         
         # 10. return torch.tensor(state, dtype=float32)
+        scale = 100.0
 
-        prices = self.get_current_prices().flatten() if self.get_current_prices() is not None else [0.0] * 18                          # 18
-        valuations = self.map_to_ndarray(self.get_valuations()).flatten()        # 18
-        min_bids = self.map_to_ndarray(self.get_min_bids()).flatten()            # 18
+        prices = self.get_current_prices().flatten() / 50.0 if self.get_current_prices() is not None else [0.0] * 18      # self.map_to_ndarray(self.current_prices_map()) #                    # 18
+        valuations = self.map_to_ndarray(self.get_valuations()).flatten() / 30.0        # 18
+        min_bids = self.map_to_ndarray(self.get_min_bids()).flatten() / 50.0            # 18
         allocation = self.set_to_list(self.get_tentative_allocation()) # TODO one hot encoding # 18
         # margin = (valuations - prices) / scale,
         is_national = [1.0 if self.is_national_bidder() else 0.0]      # 1
-        round = [self.get_current_round()]                              # 1
+        round = [self.get_current_round() / 500.0]                              # 1
         proximity = self.proximity_to_mask(self.get_goods_in_proximity())                      # 18
-        utility = [self.calc_total_utility()]                             # 1
+        utility = [self.calc_total_utility() / 100.0]                             # 1
+
+        # prev_util = [self.get_previous_util()]
+        # prev_bid = self.get_previous_bid()
+        # prev_winners = self.get_previous_winners()
 
         # print('prices: ', prices) #, len(prices))
         # print('valuations: ', valuations.shape)
@@ -203,7 +237,8 @@ class MyAgent(MyLSVMAgent):
             is_national,
             round,
             proximity,
-            utility
+            utility,
+            # margin
         ))
         state= torch.tensor(state, dtype=torch.float32)
         return state
@@ -227,7 +262,7 @@ class MyAgent(MyLSVMAgent):
         for i, good in enumerate(self.goods):
             action = int(actions[i])
             if action == 0:
-                # bids[good] = None
+                # bids[good] = 0
                 continue
             if action == 1:
                 bid = valuations[good]
@@ -235,8 +270,16 @@ class MyAgent(MyLSVMAgent):
                 bid = min_bids[good] * self.multipliers[action]
             else:
                 raise Exception('Invalid action')
+            
             if bid >= min_bids[good]:
                 bids[good] = bid
+            elif bid < min_bids[good]:
+                bids[good] = min_bids[good]
+            elif bid > valuations[good]:
+                bids[good] = valuations[good]
+            
+            
+
         
         return bids
 

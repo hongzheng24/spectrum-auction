@@ -138,7 +138,7 @@ Detailed history methods allow the agent to analyze its performance and adjust s
 
 Tournament Results
 -----------------
-
+Final util 0
 
 Extended Results: 
               Agent 1        Agent 2        Agent 3      Agent 4          Agent 5          Agent 6      A1 Score      A2 Score   A3 Score    A4 Score    A5 Score      A6 Score
@@ -159,3 +159,157 @@ Results:
     6    CP2 - MyAgent -4.301783e+16
     0     CP - MyAgent -2.232724e+17
     246.07814383506775 Seconds Elapsed
+
+
+
+=================
+Less than mid bid bug fixed Results
+=================
+    Extended Results: 
+          Agent 1        Agent 2        Agent 3      Agent 4          Agent 5          Agent 6   A1 Score      A2 Score   A3 Score   A4 Score   A5 Score      A6 Score
+0   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder  Truthful Bidder   3.804899  9.044654e+01   2.425550  15.604047  18.897609  1.116711e+01
+1   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder           keyreg   1.010913  1.014700e+02  13.174063   9.457420  17.393433  2.278622e+01
+2   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder  Truthful Bidder           keyreg   0.256193  1.544026e+02   1.223435  45.418729  33.912936  5.005562e+00
+3   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent   Min Bidder  Truthful Bidder           keyreg  19.569206  1.166011e+02   1.917636  36.219156   7.796155  3.070650e+00
+4   CP - MyAgent  CP2 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg   5.548555  6.907165e+01  16.050134  17.706610   8.763783  4.853379e+00
+5   CP - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  -0.241482 -3.988758e+17  47.818711  50.477764  29.198404 -1.882287e+08
+6  CP2 - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  92.518292  7.099916e+00   3.009646  33.201806   8.296646  1.896748e+00
+Results: 
+         Agent Name   Final Score
+6    CP2 - MyAgent  1.143152e+02
+3       Min Bidder  3.168015e+01
+2      Jump Bidder  3.054149e+01
+4  Truthful Bidder  1.983518e+01
+0     CP - MyAgent  5.156275e+00
+5           keyreg -4.182859e+07
+1    CP3 - MyAgent -8.397386e+16
+
+
+
+
+========================
+Normalized feature results
+========================
+
+Min Bidder won Good G at Price 12.01, Good A at Price 8.10, Good M at Price 8.10, Good H at Price 12.39.                                                                                                                                          
+Min Bidder got a final utility of 57.1693424455798
+CP - MyAgent won Good I at Price 13.88, Good O at Price 11.13, Good J at Price 16.56, Good K at Price 14.83, Good B at Price 12.72, Good P at Price 9.59, Good C at Price 17.19, Good D at Price 12.43, Good N at Price 11.18.
+CP - MyAgent got a final utility of 149.69896427783505
+Jump Bidder won Good E at Price 12.38, Good Q at Price 12.53, Good F at Price 15.41.
+Jump Bidder got a final utility of 9.119206694047506
+CP2 - MyAgent got a final utility of 0
+keyreg won Good R at Price 3.50, Good L at Price 4.96.
+keyreg got a final utility of 21.74844099541866
+Truthful Bidder got a final utility of 0
+File saved to Auction 126: Min Bidder VS CP - MyAgent VS Jump Bidder VS CP2 - MyAgent VS keyreg VS Truthful Bidder (National).json.gz                                                                                                             
+Extended Results: 
+          Agent 1        Agent 2        Agent 3      Agent 4          Agent 5          Agent 6    A1 Score      A2 Score   A3 Score   A4 Score   A5 Score      A6 Score
+0   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder  Truthful Bidder   86.766518  7.439565e+00  -0.222645  20.271170  42.147012  1.404669e+01
+1   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder           keyreg   94.611391  1.016282e+01   3.320368   9.282956  25.577444  2.166278e+00
+2   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder  Truthful Bidder           keyreg  160.294948  2.081310e+00   1.091293  62.158333  37.680645  1.622290e+00
+3   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent   Min Bidder  Truthful Bidder           keyreg   96.768400  6.976254e+00   1.225758  37.661117  14.612595  2.539284e+00
+4   CP - MyAgent  CP2 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  118.579213 -2.120765e+00   7.748555  26.054673  12.500920  2.803485e+00
+5   CP - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg   87.303446  5.388107e+00  28.155435   8.414609   6.747516  7.787945e+00
+6  CP2 - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg    7.369968 -8.294243e+08  61.882994  56.079329  27.814032 -1.324774e+19
+Results: 
+         Agent Name   Final Score
+6     CP - MyAgent  1.035159e+02
+3       Min Bidder  3.610475e+01
+2      Jump Bidder  3.606320e+01
+4  Truthful Bidder  1.896138e+01
+0    CP2 - MyAgent  5.962238e+00
+1    CP3 - MyAgent -2.182696e+08
+5           keyreg -3.679928e+18
+651.6059987545013 Seconds Elapsed
+
+
+=========
+Aggressive bidding results
+========
+
+Min Bidder won Good F at Price 0.10, Good Q at Price 0.10, Good A at Price 0.00, Good E at Price 0.10, Good L at Price 0.10, Good C at Price 0.10, Good K at Price 0.10, Good J at Price 0.10, Good D at Price 0.10.                              
+Min Bidder got a final utility of 187.14884774140145
+CP3 - MyAgent got a final utility of 0
+keyreg won Good R at Price 0.00.
+keyreg got a final utility of 0.0
+CP2 - MyAgent got a final utility of 0
+CP - MyAgent got a final utility of 0
+Truthful Bidder won Good P at Price 0.10, Good B at Price 0.10, Good G at Price 0.10, Good M at Price 0.10, Good I at Price 0.10, Good N at Price 0.10, Good H at Price 0.10, Good O at Price 0.10.
+Truthful Bidder got a final utility of 224.78624961387413
+File saved to Auction 125: Min Bidder VS CP3 - MyAgent VS keyreg VS CP2 - MyAgent VS CP - MyAgent (National) VS Truthful Bidder.json.gz                                                                                                           
+Auction 126: Min Bidder VS CP3 - MyAgent VS keyreg VS CP2 - MyAgent VS CP - MyAgent VS Truthful Bidder (National)
+Running Round:   2%|███                                                                                                                                                                                         | 17/1053 [00:00<00:41, 24.82it/s]keyreg timed out after 1 seconds.
+Checkpoint saved to checkpoints/dqn_model.pt
+Checkpoint saved to checkpoints/dqn_model.pt
+Running Round:   2%|████▋                                                                                                                                                                                       | 26/1053 [00:03<03:12,  5.34it/s]Checkpoint saved to checkpoints/dqn_model.pt
+Running Round:   4%|███████▋                                                                                                                                                                                    | 43/1053 [00:05<01:08, 14.68it/s]Checkpoint saved to checkpoints/dqn_model.pt
+Min Bidder won Good H at Price 6.60, Good B at Price 6.30, Good G at Price 6.60, Good M at Price 6.60.                                                                                                                                            
+Min Bidder got a final utility of 63.43946528286579
+CP3 - MyAgent got a final utility of 0
+keyreg timed out 1 times
+keyreg got a final utility of 0
+CP2 - MyAgent got a final utility of 0
+CP - MyAgent won Good P at Price 6.25, Good Q at Price 5.95, Good E at Price 3.90, Good I at Price 4.40, Good L at Price 4.00, Good O at Price 4.50, Good J at Price 6.08, Good D at Price 4.50.
+CP - MyAgent got a final utility of 147.95598561106794
+Truthful Bidder won Good A at Price 6.60, Good R at Price 6.60, Good N at Price 6.60, Good C at Price 6.60, Good K at Price 4.10, Good F at Price 6.60.
+Truthful Bidder got a final utility of 7.260377469159494
+File saved to Auction 126: Min Bidder VS CP3 - MyAgent VS keyreg VS CP2 - MyAgent VS CP - MyAgent VS Truthful Bidder (National).json.gz                                                                                                           
+Extended Results: 
+          Agent 1        Agent 2        Agent 3      Agent 4          Agent 5          Agent 6      A1 Score   A2 Score      A3 Score   A4 Score   A5 Score      A6 Score
+0   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder  Truthful Bidder  3.989842e+00   3.219476  5.847495e+01  27.482215  50.449634  3.039218e+01
+1   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder           keyreg  4.497282e+00  11.919370  2.788431e+01  55.388463  46.942753  8.578667e+00
+2   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder  Truthful Bidder           keyreg -2.677531e+19   7.556224 -1.309537e+16  50.489777  62.433026 -8.506723e+18
+3   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent   Min Bidder  Truthful Bidder           keyreg  1.127279e+01  13.203459  6.363668e+01  31.909889  24.101245  1.536140e+01
+4   CP - MyAgent  CP2 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  6.332581e+01  31.978575  3.399681e+01  30.910967   7.247476  4.461952e+00
+5   CP - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  1.300968e+01  24.341954  1.794232e+01  39.717974  31.064604  9.391038e+00
+6  CP2 - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder           keyreg  2.438558e+01  31.592021  3.090701e+01  37.019890  27.193960  4.785463e+00
+Results: 
+         Agent Name   Final Score
+6       Min Bidder  3.896480e+01
+3      Jump Bidder  3.772711e+01
+4  Truthful Bidder  3.405810e+01
+1    CP2 - MyAgent  1.353192e+01
+2    CP3 - MyAgent -2.619074e+15
+5           keyreg -1.790889e+18
+0     CP - MyAgent -5.950069e+18
+579.1732757091522 Seconds Elapsed
+
+
+
+
+=========
+Regularization Run 2
+========
+Min Bidder won Good N at Price 8.00, Good O at Price 8.00.                                                                                                                                                                                        
+Min Bidder got a final utility of 25.109859396804115
+Jump Bidder won Good G at Price 13.16, Good C at Price 14.94, Good A at Price 7.26, Good M at Price 13.44.
+Jump Bidder got a final utility of 28.53298235345335
+keyreg won Good L at Price 8.00, Good K at Price 3.49, Good P at Price 6.00, Good F at Price 3.72, Good R at Price 4.10, Good Q at Price 3.50.
+keyreg timed out 1 times
+keyreg got a final utility of 168.0745603791632
+CP3 - MyAgent won Good H at Price 9.65.
+CP3 - MyAgent timed out 1 times
+CP3 - MyAgent got a final utility of 6.8573942595411435
+CP2 - MyAgent won Good B at Price 7.93, Good I at Price 3.52.
+CP2 - MyAgent got a final utility of 12.808475514127341
+Truthful Bidder won Good D at Price 8.26, Good J at Price 6.74, Good E at Price 6.12.
+Truthful Bidder got a final utility of 0.27033245492557256
+File saved to Auction 126: Min Bidder VS Jump Bidder VS keyreg VS CP3 - MyAgent VS CP2 - MyAgent VS Truthful Bidder (National).json.gz                                                                                                            
+Extended Results: 
+          Agent 1        Agent 2        Agent 3      Agent 4          Agent 5 Agent 6      A1 Score      A2 Score      A3 Score    A4 Score    A5 Score      A6 Score
+0   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder       Min Bidder  keyreg -3.435529e+13 -1.508951e+17 -6.132488e+12   27.504473   31.098648 -1.847536e+14
+1   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent  Jump Bidder  Truthful Bidder  keyreg  0.000000e+00  0.000000e+00  1.010139e+01  147.848003  179.554046  0.000000e+00
+2   CP - MyAgent  CP2 - MyAgent  CP3 - MyAgent   Min Bidder  Truthful Bidder  keyreg  4.471524e+01  2.273264e+01  3.068740e+00   70.074899   58.486637  1.267770e+01
+3   CP - MyAgent  CP2 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder  keyreg  5.642861e+01  6.586286e+00  2.670460e+01   37.142988   20.768884  7.483045e+00
+4   CP - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder  keyreg  1.332688e+01  1.725397e+01  2.415225e+01   51.474650   46.491323  1.114210e+01
+5  CP2 - MyAgent  CP3 - MyAgent    Jump Bidder   Min Bidder  Truthful Bidder  keyreg  6.923106e+00  1.875420e+01  3.053917e+01   67.987265   41.083173  1.145521e+01
+Results: 
+         Agent Name   Final Score
+4       Min Bidder  4.713155e+01
+6  Truthful Bidder  4.115348e+01
+3      Jump Bidder  3.374547e+01
+2    CP3 - MyAgent -1.533122e+12
+0     CP - MyAgent -6.062699e+12
+5           keyreg -2.639337e+13
+1    CP2 - MyAgent -2.382554e+16
+781.7207450866699 Seconds Elapsed
