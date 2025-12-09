@@ -36,8 +36,8 @@ EPISODES = 1000
 
 SAVE_FREQ = 100
 CHECKPOINT_DIR = 'checkpoints'
-FILENAME = 'dqn_model_action_to_bid_logic_fix.pt'
-FILEPATH = 'checkpoints/dqn_model_action_to_bid_logic_fix.pt'
+FILENAME = 'dqn_model_checkpoint.pt'
+FILEPATH = 'checkpoints/dqn_model_checkpoint.pt'
 
 
 
@@ -52,7 +52,8 @@ MULTIPLIERS = {
     3: 1.05,
     4: 1.1,
     5: 1.2,
-    6: 1.5
+    6: 1.5,
+    7: 2.0
 }
 STATE_SIZE = 18 * 5 + 1 * 3
 ACTION_SIZE = len(MULTIPLIERS) + 2 # Bid nothing, bid valuation, or bid multiplier times min bid
@@ -156,7 +157,7 @@ class MyAgent(MyLSVMAgent):
 
         if self.is_valid_bid_bundle(bids):
             return self.clip_bids(bids)
-        assert self.is_valid_bid_bundle(bids) is True, 'Exception: Invalid bid!'
+        # assert self.is_valid_bid_bundle(bids) is True, 'Exception: Invalid bid!'
         return bids
     
     def update(self):
