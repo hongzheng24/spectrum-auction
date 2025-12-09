@@ -29,15 +29,15 @@ BATCH_SIZE = 64
 MEMORY_SIZE = 10000
 TARGET_UPDATE = 1000
 HIDDEN_SIZE = 128 
-DROPOUT = 0.2
+DROPOUT = 0.0
 NUM_GOODS = 18
 EPISODES = 1000
 
 
 SAVE_FREQ = 100
 CHECKPOINT_DIR = 'checkpoints'
-FILENAME = 'dqn_model_normalized.pt'
-FILEPATH = 'checkpoints/dqn_model_normalized.pt'
+FILENAME = 'dqn_model_action_to_bid_logic_fix.pt'
+FILEPATH = 'checkpoints/dqn_model_action_to_bid_logic_fix.pt'
 
 
 
@@ -154,7 +154,8 @@ class MyAgent(MyLSVMAgent):
         # if self.is_valid_bid_bund
         # #####
 
-
+        if self.is_valid_bid_bundle(bids):
+            return self.clip_bids(bids)
         assert self.is_valid_bid_bundle(bids) is True, 'Exception: Invalid bid!'
         return bids
     
@@ -271,12 +272,12 @@ class MyAgent(MyLSVMAgent):
             else:
                 raise Exception('Invalid action')
             
+            bid = max(bid, min_bids[good])  # At least min_bid
+            bid = min(bid, valuations[good])  # At most valuation
+            
             if bid >= min_bids[good]:
                 bids[good] = bid
-            elif bid < min_bids[good]:
-                bids[good] = min_bids[good]
-            elif bid > valuations[good]:
-                bids[good] = valuations[good]
+
             
             
 

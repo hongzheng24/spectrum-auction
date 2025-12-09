@@ -221,7 +221,7 @@ class DQNetwork:
         if self.steps % self.target_update == 0:
             self.target_net.load_state_dict(self.policy_net.state_dict())
         if self.steps % self.save_freq == 0:
-            self.save_checkpoint()
+            self.save_checkpoint(dir=self.checkpoint_dir, filename=self.filename)
 
         
         # Decay epsilon
